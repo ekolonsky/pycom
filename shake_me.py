@@ -1,22 +1,23 @@
 from pytrack import Pytrack
 from LIS2HH12 import LIS2HH12
+from network import WLAN
+from mqtt import MQTTClient
+import machine
 import pycom
 import time
 
-broker = "broker.hivemq.com"
+#broker = "broker.hivemq.com"
+broker = "mqtt.avist.io"
 topic = "/accelerometer"
 SSID = "Wart-29"
 PASS = "77599544151"
 
 
-from network import WLAN
-from mqtt import MQTTClient
-import machine
 
 def settimeout(duration):
     pass
 
-print("Connecting to %s .."%SSID)
+print("Connecting to WiFi ..")
 
 wlan = WLAN(mode=WLAN.STA)
 wlan.antenna(WLAN.EXT_ANT)
@@ -25,10 +26,11 @@ wlan.connect(SSID, auth=(WLAN.WPA2, PASS), timeout=5000)
 while not wlan.isconnected():
      machine.idle()
 
-print("Connected to Wifi\n")
+print("Connected to Wifi %s"%SSID)
 client = MQTTClient("pytrack", broker, port=1883)
 client.settimeout = settimeout
 client.connect()
+print("Connected to MQTT broker %s"%broker)
 client.publish(topic, "Hello")
 client.disconnect()
 
