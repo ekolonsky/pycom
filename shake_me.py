@@ -16,6 +16,8 @@ import machine
 def settimeout(duration):
     pass
 
+print("Connecting to %s.."%SSID)
+
 wlan = WLAN(mode=WLAN.STA)
 wlan.antenna(WLAN.EXT_ANT)
 wlan.connect(SSID, auth=(WLAN.WPA2, PASS), timeout=5000)
