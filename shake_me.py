@@ -16,7 +16,7 @@ import machine
 def settimeout(duration):
     pass
 
-print("Connecting to %s.."%SSID)
+print("Connecting to %s .."%SSID)
 
 wlan = WLAN(mode=WLAN.STA)
 wlan.antenna(WLAN.EXT_ANT)
@@ -38,7 +38,6 @@ py = Pytrack()
 
 def handler(pin_o):
   if pin_o():
-    count +=1
     msg='ON'
   else:
     msg = 'OFF'
