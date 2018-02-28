@@ -16,7 +16,7 @@ PASS = "parmafree"  # "77599544151"
 ACCEL_TRESHOLD = 2000 # shake deteted when acceleration is more than  0.001xG
 ACCEL_DURATION = 200  # shake duration is more than 200ms
 MAX_TIMEOUT = 20      # time in seconds to wait if nothing happens, then go to go to sleep
-TIME_TO_SLEEP = 300   # time to sleep in seconds, then wake up.
+TIME_TO_SLEEP = 60   # time to sleep in seconds, then wake up.
 
 
 
