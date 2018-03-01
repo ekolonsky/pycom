@@ -67,8 +67,8 @@ class ButtonSensor(EventSensor):
       #self.value = True
 
 
-ACCEL_TRESHOLD = 2000 # shake deteted when acceleration is more than  0.001xG
-ACCEL_DURATION = 200  # shake duration is more than 200ms
+ACCEL_TRESHOLD = 1000 # set acceleration treshold  in 0.001g
+ACCEL_DURATION = 200  # and min duration in ms
 
 class ShakeSensor(EventSensor):
 
