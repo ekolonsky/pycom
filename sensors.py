@@ -23,7 +23,7 @@ class Sensor:
 
   def printout(self, message):
       print(message)
-      self._queue.push(message)
+      self._queue.send(message)
 
 class PeriodicSensor(Sensor):
 
@@ -80,10 +80,10 @@ class ShakeSensor(EventSensor):
       # enable the activity/inactivity interrupts
       # set the accelereation threshold to 2000mG (2G) and the min duration to 200ms
       self._acc.enable_activity_interrupt(accel_treshold, accel_duration,
-                                            handler=self._event_handler)
+                                            handler=self._shake_handler)
       EventSensor.__init__(self, queue)
 
-  def _event_handler(self, pin_o):
+  def _shake_handler(self, pin_o):
       if pin_o():
           msg = "Shake"
           self.printout(msg)
@@ -108,8 +108,8 @@ class TemperatureSensor(PeriodicSensor):
 class GeolocationSensor(PeriodicSensor):
     def __init__(self, queue, period):
         self._gps = L76GNSS(Pytrack())
-        self.value = (0, 0)  # latitude, longitude
         PeriodicSensor.__init__(self, queue, period)
+        self.value = (None, None)  # latitude, longitude
 
     def read(self):
         self.value = self._gps.coordinates()
@@ -140,22 +140,24 @@ class InactivitySensor(PeriodicSensor):
         # enable wakeup source from INT pin
         self._py.setup_int_pin_wake_up(False)
         self.value = 0
+        # enable activity and also inactivity interrupts, using the default callback handler
+        self._py.setup_int_wake_up(True, True)
         PeriodicSensor.__init__(self, queue, period)
 
     def read(self):
         self.value = self._queue.get_timeout()
 
-        if self.value > WAIT_BEFORE_SLEEP:
+        if self.value > self._wait_before_sleep:
             self._sleep()
 
     def _sleep(self):
-        self.printout('Sleeping for %ss'%self._time_to_sleep)
-        self._queue._chrono.reset()
+        self.printout('Sleeping')
+        EventSensor._event_handler(self)
+        #self._queue._client.publish(self._queue._topic, 'Sleeping')
         self._py.setup_sleep(self._time_to_sleep)
-        time.sleep(0.5)
         self._py.go_to_sleep()
         pass
-        
+
 
 
 
