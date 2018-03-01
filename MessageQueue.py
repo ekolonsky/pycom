@@ -26,13 +26,14 @@ class MessageBuffer:
         self._chrono = Timer.Chrono()
         self._chrono.start()
         print("Connected to MQTT broker %s"%self._broker)
-        self._client.publish(self._topic, "Hello!")
-        _thread.start_new_thread(self._loop, [.001]) # ever loop with small delay
+        #self._client.publish(self._topic, "Hello!")
+        #_thread.start_new_thread(self._loop, [.1]) # ever loop with small delay
+        self._alarm = Timer.Alarm(self._handler, 0.1 , periodic=True)
         pass
 
     def push(self, message):
         self._queue.append(message)
-        print('in <-', message)
+        #print('in <-', message)
         pass
 
     def pull(self):
@@ -48,14 +49,12 @@ class MessageBuffer:
             self._client.publish(self._topic, message)
             #except MQTTException:
             #    print('MQTT Exception raised')
-            self._chrono.reset()
+            #self._chrono.reset()
             self._busy = False
 
-    def _loop(self, delay):
-        while True:
-            if not self._busy:
-                self.pull()
-                time.sleep(delay)
+    def _handler(self, alarm):
+        if not self._busy:
+            self.pull()
 
 
     def get_timeout(self):

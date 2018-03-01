@@ -1,5 +1,4 @@
 import time
-import _thread
 from machine import Pin
 from onewire import DS18X20  # for temperature sensor
 from onewire import OneWire  # for temperature sensor
@@ -22,81 +21,82 @@ class Sensor:
   def read(self):
       pass
 
-  def last(self):
-      return self.value
-
-  def _run(self):
-      pass
-
   def printout(self, message):
       print(message)
-      #self._queue.push(message)
-
+      self._queue.push(message)
 
 class PeriodicSensor(Sensor):
 
   def __init__(self, queue, period):
       Sensor.__init__(self, queue)
       self._period = period
-      _thread.start_new_thread(self._run, [.001]) # ever loop with small delay
+      self._alarm = Timer.Alarm(self._seconds_handler, period, periodic=True)
       pass
 
-  def _run(self, period):
-        while True:
-            if not self._busy:
-                self._busy = True
-                self.read()
-                self._busy = False
-                time.sleep(period)
+  def _seconds_handler(self, alarm):
+        if not self._busy:
+            self._busy = True
+            self.read()
+            self._busy = False
+
+
+class EventSensor(Sensor):
+
+    def __init__(self, queue):
+        self._queue = queue
+        Sensor.__init__(self, queue)
+        pass
+
+    def _event_handler(self):
+        self._queue._chrono.reset()
+        pass
 
 
 BUTTON_PIN = 'P11'
-
-class ButtonSensor(Sensor):
+class ButtonSensor(EventSensor):
 
   def __init__(self, queue, pinstr=BUTTON_PIN):
       self.pin = Pin(pinstr, mode=Pin.IN, pull=Pin.PULL_UP)
-      self.pin.callback(Pin.IRQ_FALLING, self._run)
-      Sensor.__init__(self)
+      self.pin.callback(Pin.IRQ_FALLING, self._event_handler)
+      EventSensor.__init__(self, queue)
       pass
 
-#def button_pressed(pin):
-#    print('button pressed')
-
-  def _run(self, pin):
+  def _event_handler(self, pin):
       self.printout('Button pressed')
+      EventSensor._event_handler(self)
       #self.value = True
 
 
 ACCEL_TRESHOLD = 2000 # shake deteted when acceleration is more than  0.001xG
 ACCEL_DURATION = 200  # shake duration is more than 200ms
 
-class ShakeSensor(Sensor ):
+class ShakeSensor(EventSensor):
 
   def __init__(self, queue,
                      accel_treshold=ACCEL_TRESHOLD,
                      accel_duration=ACCEL_DURATION):
 
-      Sensor.__init__(self, queue)
       self._acc = LIS2HH12()
       # enable the activity/inactivity interrupts
       # set the accelereation threshold to 2000mG (2G) and the min duration to 200ms
-      self._acc.enable_activity_interrupt(accel_treshold, accel_duration ,handler=self._handler)
+      self._acc.enable_activity_interrupt(accel_treshold, accel_duration,
+                                            handler=self._event_handler)
+      EventSensor.__init__(self, queue)
 
-  def _handler(self, pin_o):
+  def _event_handler(self, pin_o):
       if pin_o():
           msg = "Shake"
           self.printout(msg)
+          EventSensor._event_handler(self)
 
-
-
+DEAFULT_TEMPERATURE_PIN = Pin('P12')
 class TemperatureSensor(PeriodicSensor):
 
-    def __init__(self, queue, period, pin):
+    def __init__(self, queue, period, pin=DEAFULT_TEMPERATURE_PIN):
         self._ow = OneWire(pin)
         self._temp = DS18X20(self._ow)
         self.value = 0
-        PeriodicSensor.__init__(self, period)
+        PeriodicSensor.__init__(self, queue, period)
 
     def read(self):
         self.value = self._temp.read_temp_async()
@@ -106,16 +106,16 @@ class TemperatureSensor(PeriodicSensor):
         pass
 
 class GeolocationSensor(PeriodicSensor):
-    def __init__(self, period):
-        self._gps = L76GNSS()
+    def __init__(self, queue, period):
+        self._gps = L76GNSS(Pytrack())
         self.value = (0, 0)  # latitude, longitude
-        PeriodicSensor.__init__(self, period)
+        PeriodicSensor.__init__(self, queue, period)
 
     def read(self):
         self.value = self._gps.coordinates()
 
 
-WAIT_BEFORE_SLEEP = 300      # time in seconds to wait if nothing happens, then go to go to sleep
+WAIT_BEFORE_SLEEP = 60      # time in seconds to wait if nothing happens, then go to go to sleep
 TIME_TO_SLEEP = 3600         # time to sleep in seconds, then wake up.
 
 class InactivitySensor(PeriodicSensor):
@@ -135,23 +135,29 @@ class InactivitySensor(PeriodicSensor):
         # WAKE_REASON_PUSH_BUTTON = 2
         # WAKE_REASON_TIMER = 4
         # WAKE_REASON_INT_PIN = 8
-        print(message)
+        self.printout(message)
         time.sleep(0.5)
         # enable wakeup source from INT pin
         self._py.setup_int_pin_wake_up(False)
-        self._inactivity_timer = 0
+        self.value = 0
+        PeriodicSensor.__init__(self, queue, period)
 
     def read(self):
         self.value = self._queue.get_timeout()
-        inactivity_time = self.value
-        print('Inactivity timer acc:', inactivity_time)
-        if inactivity_time > self._wait_before_sleep:
-            print('Going to sleep for %ss'%self._time_to_sleep)
-            #self._queue.push('Sleeping..')
-            self._queue._chrono.reset()
-            #self._py.setup_sleep(self._time_to_sleep)
-            #time.sleep(1)
-            #self._py.go_to_sleep()
+
+        if self.value > WAIT_BEFORE_SLEEP:
+            self._sleep()
+
+    def _sleep(self):
+        self.printout('Sleeping for %ss'%self._time_to_sleep)
+        self._queue._chrono.reset()
+        self._py.setup_sleep(self._time_to_sleep)
+        time.sleep(0.5)
+        self._py.go_to_sleep()
+        pass
+        
+
+
 
 
 #t = TemperatureSensor(period=5, pin=Pin('P12'))

@@ -1,6 +1,6 @@
 from mqtt import MQTTClient
-from network import WLAN
-import machine
+#from network import WLAN
+#import machine
 import time
 
 def sub_cb(topic, msg):
@@ -8,11 +8,12 @@ def sub_cb(topic, msg):
 
 import wifi_connect
 
-client = MQTTClient("device_id", "io.adafruit.com",user="your_username", password="your_api_key", port=1883)
 
-client.set_callback(sub_cb)
+client = MQTTClient("device_id", "broker.hivemq.com", port=1883)
+
+#client.set_callback(sub_cb)
 client.connect()
-client.subscribe(topic="youraccount/feeds/lights")
+#client.subscribe(topic="youraccount/feeds/lights")
 
 while True:
     print("Sending ON")
